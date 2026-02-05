@@ -1,5 +1,5 @@
 <template>
-  <Panel header="检验报告模板系统" class="inspection-report-template">
+  <Panel header="检验报告模板" class="inspection-report-template">
     <div class="main-content">
       <div class="sidebar">
         <h3 style="margin-bottom: 15px; color: #333;">模板选择</h3>
@@ -12,6 +12,24 @@
           >
             <div class="template-title">{{ template.name }}检验报告</div>
             <div class="template-desc">{{ template.description }}</div>
+          </div>
+        </div>
+        
+        <h3 style="margin-top: 30px; margin-bottom: 15px; color: #333;">字段配置</h3>
+        <div class="field-config">
+          <div class="config-desc">为当前模板选择需要显示的字段：</div>
+          <div 
+            v-for="field in allAvailableFields" 
+            :key="field.id"
+            class="field-config-item"
+          >
+            <input 
+              type="checkbox" 
+              :id="`field-${field.id}`"
+              v-model="templateFieldConfig[currentTemplate.id][field.id]"
+              @change="saveTemplateFieldConfig"
+            >
+            <label :for="`field-${field.id}`">{{ field.label }}</label>
           </div>
         </div>
       </div>
@@ -48,13 +66,25 @@
                   {{ field.visible ? '👁️' : '👁️‍🗨️' }}
                 </button>
               </div>
-              <input 
-                :type="field.type" 
-                :id="field.id" 
-                v-model="formData[field.id]" 
-                class="form-control"
-                :placeholder="`请输入${field.label}`"
-              >
+              <template v-if="field.type === 'textarea'">
+                <textarea 
+                  :id="field.id" 
+                  v-model="formData[field.id]" 
+                  class="form-control"
+                  :placeholder="`请输入${field.label}`"
+                  rows="4"
+                  style="resize: vertical; min-height: 100px;"
+                ></textarea>
+              </template>
+              <template v-else>
+                <input 
+                  :type="field.type" 
+                  :id="field.id" 
+                  v-model="formData[field.id]" 
+                  class="form-control"
+                  :placeholder="`请输入${field.label}`"
+                >
+              </template>
             </div>
           </div>
         </div>
@@ -95,6 +125,23 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+        
+        <!-- 检验结论 -->
+        <div class="section">
+          <h3 class="section-title">检验结论</h3>
+          <div class="form-grid">
+            <div class="form-group field-item">
+              <textarea 
+                id="inspectionConclusion" 
+                v-model="formData.inspectionConclusion" 
+                class="form-control"
+                placeholder="请输入检验结论"
+                rows="4"
+                style="resize: vertical; min-height: 100px;"
+              ></textarea>
+            </div>
           </div>
         </div>
         
@@ -146,7 +193,7 @@
     </Dialog>
     
     <div class="footer">
-      <p>检验报告模板系统 | 当前模板: <span id="currentTemplateName">{{ currentTemplate.name }}</span></p>
+      <p>检验报告模板 | 当前模板: <span id="currentTemplateName">{{ currentTemplate.name }}</span></p>
     </div>
   </Panel>
 </template>
@@ -166,11 +213,14 @@ const templates = ref([
     description: '原材料质量检验报告',
     subtitle: '原材料入库检验报告',
     fields: [
-      { id: 'manufacturer', label: '生产商', type: 'text', required: true },
-      { id: 'supplier', label: '供应商', type: 'text', required: true },
+      { id: 'productName', label: '产品名称', type: 'text', required: true },
+      { id: 'materialCode', label: '产品编码', type: 'text', required: true },
+      { id: 'inspectionQuantity', label: '检验数量', type: 'number', required: true },
+      { id: 'sampleQuantity', label: '样品数量', type: 'number', required: true },
       { id: 'batchNo', label: '批号', type: 'text', required: true },
       { id: 'manufacturerBatchNo', label: '厂家批号', type: 'text', required: true },
       { id: 'submissionDate', label: '送检日期', type: 'date', required: true },
+      { id: 'expiryDate', label: '有效期', type: 'date', required: true },
     ],
     testItems: [
       { name: '外观', standard: '均匀，无杂质', unit: '目测', type: 'text', min: null, max: null },
@@ -186,8 +236,11 @@ const templates = ref([
     description: '包装材料检验报告',
     subtitle: '包装材料验收检验报告',
     fields: [
+      { id: 'productName', label: '产品名称', type: 'text', required: true },
+      { id: 'materialCode', label: '产品编码', type: 'text', required: true },
+      { id: 'inspectionQuantity', label: '检验数量', type: 'number', required: true },
+      { id: 'sampleQuantity', label: '样品数量', type: 'number', required: true },
       { id: 'manufacturer', label: '生产商', type: 'text', required: true },
-      { id: 'supplier', label: '供应商', type: 'text', required: true },
       { id: 'batchNo', label: '批号', type: 'text', required: true },
       { id: 'manufacturerBatchNo', label: '厂家批号', type: 'text', required: true },
       { id: 'submissionDate', label: '送检日期', type: 'date', required: true },
@@ -206,11 +259,16 @@ const templates = ref([
     description: '半成品过程检验报告',
     subtitle: '生产过程质量检验报告',
     fields: [
+      { id: 'productName', label: '产品名称', type: 'text', required: true },
+      { id: 'materialCode', label: '产品编码', type: 'text', required: true },
+      { id: 'inspectionQuantity', label: '检验数量', type: 'number', required: true },
+      { id: 'sampleQuantity', label: '样品数量', type: 'number', required: true },
       { id: 'manufacturer', label: '生产商', type: 'text', required: true },
       { id: 'supplier', label: '供应商', type: 'text', required: true },
       { id: 'batchNo', label: '批号', type: 'text', required: true },
       { id: 'manufacturerBatchNo', label: '厂家批号', type: 'text', required: true },
       { id: 'submissionDate', label: '送检日期', type: 'date', required: true },
+      { id: 'expiryDate', label: '有效期', type: 'date', required: true },
     ],
     testItems: [
       { name: '外观', standard: '符合要求', unit: '目测', type: 'text', min: null, max: null },
@@ -225,13 +283,16 @@ const templates = ref([
     description: '最终成品检验报告',
     subtitle: '产品出厂检验报告',
     fields: [
+      { id: 'productName', label: '产品名称', type: 'text', required: true },
+      { id: 'materialCode', label: '产品编码', type: 'text', required: true },
+      { id: 'inspectionQuantity', label: '检验数量', type: 'number', required: true },
+      { id: 'sampleQuantity', label: '样品数量', type: 'number', required: true },
       { id: 'manufacturer', label: '生产商', type: 'text', required: true },
       { id: 'supplier', label: '供应商', type: 'text', required: true },
       { id: 'batchNo', label: '批号', type: 'text', required: true },
       { id: 'manufacturerBatchNo', label: '厂家批号', type: 'text', required: true },
       { id: 'submissionDate', label: '送检日期', type: 'date', required: true },
-      { id: 'productName', label: '产品名称', type: 'text', required: true },
-      { id: 'expiryDate', label: '有效期至', type: 'date', required: true }
+      { id: 'expiryDate', label: '有效期', type: 'date', required: true }
     ],
     testItems: [
       { name: '外观', standard: '符合规定', unit: '目测', type: 'text', min: null, max: null },
@@ -245,64 +306,100 @@ const templates = ref([
 // 当前选中的模板
 const currentTemplate = ref(templates.value[0]);
 
-// 预定义的固定字段列表，支持排序和隐藏
-const predefinedFields = ref([
-  { id: 'inspectionDate', label: '检验日期', type: 'date', order: 1, visible: true },
-  { id: 'productName', label: '产品名称', type: 'text', order: 2, visible: true },
-  { id: 'batchNo', label: '批号', type: 'text', order: 3, visible: true },
-  { id: 'manufacturer', label: '生产商', type: 'text', order: 4, visible: true },
-  { id: 'supplier', label: '供应商', type: 'text', order: 5, visible: true },
-  { id: 'expiryDate', label: '有效期至', type: 'date', order: 6, visible: true }
+// 所有可用字段列表
+const allAvailableFields = ref([
+  { id: 'productName', label: '产品名称', type: 'text', order: 1 },
+  { id: 'materialCode', label: '产品编码', type: 'text', order: 2 },
+  { id: 'inspectionDate', label: '检验日期', type: 'date', order: 3 },
+  { id: 'productionDate', label: '生产日期', type: 'date', order: 4 },
+  { id: 'inspectionQuantity', label: '检验数量', type: 'number', order: 5 },
+  { id: 'sampleQuantity', label: '样品数量', type: 'number', order: 6 },
+  { id: 'batchNo', label: '批号', type: 'text', order: 7 },
+  { id: 'originalFactoryBatchNo', label: '原厂批号', type: 'text', order: 8 },
+  { id: 'manufacturer', label: '生产商', type: 'text', order: 9 },
+  { id: 'supplier', label: '供应商', type: 'text', order: 10 },
+  { id: 'expiryDate', label: '有效期', type: 'date', order: 11 },
+  { id: 'standardCode', label: '标准编号', type: 'text', order: 12 }
 ]);
+
+// 模板字段配置，存储每个模板的字段显示状态
+const templateFieldConfig = ref({
+  1: { // 原料模板
+    inspectionDate: true,
+    productionDate: false,
+    productName: true,
+    materialCode: true,
+    inspectionQuantity: true,
+    sampleQuantity: true,
+    batchNo: true,
+    originalFactoryBatchNo: false,
+    manufacturer: true,
+    supplier: true,
+    expiryDate: true,
+    standardCode: true
+  },
+  2: { // 包材模板
+    inspectionDate: true,
+    productionDate: false,
+    productName: true,
+    materialCode: true,
+    inspectionQuantity: true,
+    sampleQuantity: true,
+    batchNo: true,
+    originalFactoryBatchNo: true,
+    manufacturer: true,
+    supplier: false,
+    expiryDate: false,
+    standardCode: true
+  },
+  3: { // 半成品模板
+    inspectionDate: true,
+    productionDate: true,
+    productName: true,
+    materialCode: true,
+    inspectionQuantity: true,
+    sampleQuantity: true,
+    batchNo: true,
+    originalFactoryBatchNo: false,
+    manufacturer: false,
+    supplier: false,
+    expiryDate: true,
+    standardCode: true
+  },
+  4: { // 成品模板
+    inspectionDate: true,
+    productionDate: true,
+    productName: true,
+    materialCode: true,
+    inspectionQuantity: true,
+    sampleQuantity: true,
+    batchNo: true,
+    originalFactoryBatchNo: false,
+    manufacturer: false,
+    supplier: false,
+    expiryDate: true,
+    standardCode: true
+  }
+});
 
 // 自定义字段列表（按模板保存）
 const customFields = ref([]);
 
 // 计算属性：获取所有可见字段，包括预定义和自定义字段，按order排序
 const visibleFields = computed(() => {
-  // 过滤出可见的预定义字段
-  const visiblePredefinedFields = predefinedFields.value.filter(field => {
-    // 有效期至只在成品模板中显示
-    if (field.id === 'expiryDate') {
-      return field.visible && currentTemplate.value.name === '成品';
-    }
-    return field.visible;
+  // 过滤出可见的字段，根据模板字段配置
+  const visibleFields = allAvailableFields.value.filter(field => {
+    return templateFieldConfig.value[currentTemplate.value.id][field.id];
   });
   
   // 合并预定义字段和自定义字段
-  const allFields = [...visiblePredefinedFields, ...customFields.value];
+  const allFields = [...visibleFields, ...customFields.value];
   
   // 按order排序
   return [...allFields].sort((a, b) => (a.order || 0) - (b.order || 0));
 });
 
-// 初始化预定义字段
-const initPredefinedFields = () => {
-  // 从localStorage加载预定义字段配置
-  const storageKey = `predefinedFields_${currentTemplate.value.name}`;
-  const savedFields = localStorage.getItem(storageKey);
-  if (savedFields) {
-    try {
-      const parsedFields = JSON.parse(savedFields);
-      // 合并保存的配置，保留默认值
-      predefinedFields.value.forEach((field, index) => {
-        const savedField = parsedFields.find(f => f.id === field.id);
-        if (savedField) {
-          field.order = savedField.order || field.order;
-          field.visible = savedField.visible !== undefined ? savedField.visible : field.visible;
-        }
-      });
-    } catch (error) {
-      console.error('解析预定义字段配置失败:', error);
-    }
-  }
-};
-
-// 保存预定义字段配置
-const savePredefinedFields = () => {
-  const storageKey = `predefinedFields_${currentTemplate.value.name}`;
-  localStorage.setItem(storageKey, JSON.stringify(predefinedFields.value));
-};
+// 预定义字段配置管理已移除，现在使用templateFieldConfig和allAvailableFields
 
 // 初始化自定义字段（根据当前模板加载对应的自定义字段）
 const initCustomFields = () => {
@@ -372,18 +469,22 @@ const toggleFieldVisibility = (field) => {
 
 // 保存字段配置
 const saveFieldConfig = () => {
-  savePredefinedFields();
+  // 只保存自定义字段，因为预定义字段配置通过saveTemplateFieldConfig保存
   saveCustomFields();
+  // 保存模板字段配置
+  saveTemplateFieldConfig();
 };
 
 // 表单数据
 const formData = reactive({
   reportNo: 'RPT-' + new Date().getFullYear() + '-' + String(Math.floor(1000 + Math.random() * 9000)),
   inspectionDate: new Date().toISOString().split('T')[0],
+  productionDate: '',
   manufacturer: '',
   supplier: '',
   batchNo: '',
   manufacturerBatchNo: '',
+  originalFactoryBatchNo: '',
   submissionDate: new Date().toISOString().split('T')[0],
   inspectionOrderNo: '',
   inspector: '',
@@ -393,7 +494,11 @@ const formData = reactive({
   processStage: '',
   equipment: '',
   productName: '',
-  expiryDate: ''
+  materialCode: '',
+  inspectionQuantity: '',
+  sampleQuantity: '',
+  expiryDate: '',
+  inspectionConclusion: ''
 });
 
 // 测试结果数据
@@ -441,6 +546,11 @@ const loadInspectionReportData = () => {
         'reportCode': ['reportCode', 'inspectionNumber'],
         'inspectionOrderNo': ['reportCode', 'inspectionNumber'],
         'productName': ['productName', 'materialName'],
+        'materialCode': ['materialCode', 'productCode'],
+        'inspectionQuantity': ['inspectionQuantity', 'quantity'],
+        'sampleQuantity': ['sampleQuantity', 'sampleSize'],
+        'productionDate': ['productionDate', 'manufactureDate'],
+        'originalFactoryBatchNo': ['originalFactoryBatchNo', 'factoryBatchNo'],
         'batchNo': ['batchNumber', 'batchNo'],
         'manufacturer': ['manufacturer'],
         'supplier': ['supplier'],
@@ -492,10 +602,56 @@ const loadInspectionReportData = () => {
   }
 };
 
+// 保存模板字段配置到localStorage
+const saveTemplateFieldConfig = () => {
+  try {
+    localStorage.setItem('templateFieldConfig', JSON.stringify(templateFieldConfig.value));
+    console.log('模板字段配置已保存');
+  } catch (error) {
+    console.error('保存模板字段配置失败:', error);
+  }
+};
+
+// 加载模板字段配置从localStorage
+const loadTemplateFieldConfig = () => {
+  try {
+    const savedConfig = localStorage.getItem('templateFieldConfig');
+    if (savedConfig) {
+      const parsedConfig = JSON.parse(savedConfig);
+      
+      // 合并旧配置和默认配置，确保新添加的字段不会被覆盖
+      Object.keys(templateFieldConfig.value).forEach(templateId => {
+        if (parsedConfig[templateId]) {
+          // 保留默认配置中的新字段，同时应用旧配置中的值
+          const defaultConfig = templateFieldConfig.value[templateId];
+          const oldConfig = parsedConfig[templateId];
+          
+          // 创建新配置对象，确保所有默认字段都存在
+          const newConfig = { ...defaultConfig };
+          
+          // 应用旧配置中的值（只覆盖已存在的字段）
+          Object.keys(oldConfig).forEach(fieldId => {
+            if (newConfig.hasOwnProperty(fieldId)) {
+              newConfig[fieldId] = oldConfig[fieldId];
+            }
+          });
+          
+          // 更新配置
+          templateFieldConfig.value[templateId] = newConfig;
+        }
+      });
+      
+      console.log('模板字段配置已加载并合并');
+    }
+  } catch (error) {
+    console.error('加载模板字段配置失败:', error);
+  }
+};
+
 // 初始化
 onMounted(() => {
-  // 初始化预定义字段
-  initPredefinedFields();
+  // 加载模板字段配置
+  loadTemplateFieldConfig();
   // 初始化自定义字段
   initCustomFields();
   // 加载模板
@@ -1083,5 +1239,44 @@ tr:hover {
     flex-direction: column;
     gap: 25px;
   }
+}
+
+/* 字段配置样式 */
+.field-config {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  margin-top: 10px;
+}
+
+.config-desc {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 12px;
+}
+
+.field-config-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  padding: 6px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.field-config-item:hover {
+  background-color: #f0f0f0;
+}
+
+.field-config-item input[type="checkbox"] {
+  margin-right: 8px;
+  cursor: pointer;
+}
+
+.field-config-item label {
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
 }
 </style>
